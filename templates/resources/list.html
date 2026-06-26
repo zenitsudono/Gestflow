@@ -6,10 +6,25 @@
 {% block content %}
 <div class="space-y-6" x-data="resourcesManager()">
     
+    <!-- Tab Switcher -->
+    <div class="flex border-b border-slate-200 gap-2">
+        <a href="{% url 'resource_list' %}" 
+           class="py-2.5 px-4 text-sm font-semibold border-b-2 transition-all no-underline flex items-center gap-2 {% if not show_archived %}border-primary-navy text-[#1F4E79]{% else %}border-transparent text-slate-500 hover:text-slate-700{% endif %}">
+            <i class="fa-solid fa-folder-open"></i> Réclamations actives
+        </a>
+        <a href="{% url 'resource_list' %}?archived=true" 
+           class="py-2.5 px-4 text-sm font-semibold border-b-2 transition-all no-underline flex items-center gap-2 {% if show_archived %}border-primary-navy text-[#1F4E79]{% else %}border-transparent text-slate-500 hover:text-slate-700{% endif %}">
+            <i class="fa-solid fa-box-archive"></i> Archives
+        </a>
+    </div>
+    
     <!-- Top actions bar -->
     <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
         <!-- Search & Filter Controls -->
         <form method="GET" action="{% url 'resource_list' %}" class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            {% if show_archived %}
+            <input type="hidden" name="archived" value="true">
+            {% endif %}
             <input type="text" name="search" placeholder="Rechercher une réclamation..." value="{{ request.GET.search|default:'' }}"
                    class="form-control rounded-xl py-2 px-3.5 text-sm border-slate-200 focus-ring-navy focus:outline-none w-full sm:w-60 shadow-sm">
             
@@ -86,6 +101,16 @@
                                     <a href="{% url 'resource_detail' res.id %}" class="btn btn-sm btn-light border-slate-200 text-slate-600 rounded-lg shadow-sm" title="Voir les détails">
                                         <i class="fa-solid fa-eye"></i>
                                     </a>
+                                    {% if show_archived %}
+                                    <!-- Restore Form -->
+                                    <form method="POST" action="/api/v1/resources/{{ res.id }}/restore/" class="inline-block"
+                                          @submit.prevent="restoreResource($event)">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-light border-slate-200 text-green-600 hover:bg-green-50 rounded-lg shadow-sm" title="Désarchiver / Restaurer la réclamation">
+                                            <i class="fa-solid fa-arrow-rotate-left"></i>
+                                        </button>
+                                    </form>
+                                    {% else %}
                                     <!-- Edit Trigger -->
                                     <button class="btn btn-sm btn-light border-slate-200 text-slate-600 rounded-lg shadow-sm" title="Modifier rapidement"
                                             @click="openEditDrawer('{{ res.id }}', '{{ res.title|escapejs }}', '{{ res.description|escapejs }}', '{{ res.category.id }}', '{{ res.status }}')">
@@ -100,13 +125,14 @@
                                             <i class="fa-solid fa-box-archive"></i>
                                         </button>
                                     </form>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="6" class="text-center py-8 text-slate-400">Aucune réclamation trouvée correspondant à vos critères ou à votre département.</td>
+                            <td colspan="6" class="text-center py-8 text-slate-400">Aucune réclamation {% if show_archived %}archivée{% endif %} trouvée correspondant à vos critères ou à votre département.</td>
                         </tr>
                     {% endif %}
                 </tbody>
@@ -242,6 +268,19 @@
                 } catch (error) {
                     console.error("Error archiving resource:", error);
                     alert("Erreur lors de l'archivage de la réclamation.");
+                }
+            },
+
+            async restoreResource(event) {
+                if (!confirm("Êtes-vous sûr de vouloir restaurer cette réclamation ?")) return;
+                
+                const url = event.target.action;
+                try {
+                    await axios.post(url);
+                    window.location.reload();
+                } catch (error) {
+                    console.error("Error restoring resource:", error);
+                    alert("Erreur lors de la restauration de la réclamation.");
                 }
             }
         };

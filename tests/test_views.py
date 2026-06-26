@@ -301,3 +301,32 @@ def test_resource_web_views_filtering(api_client, db_roles):
     assert res2 in resources
     assert res1 not in resources
 
+
+@pytest.mark.django_db
+def test_resource_web_views_archived(api_client, db_roles):
+    admin = UserFactory(role=db_roles['admin'], department='it')
+    cat = CategoryFactory()
+    
+    active_res = ResourceFactory(title="Active claim", description="Active", category=cat, owner=admin, is_archived=False)
+    archived_res = ResourceFactory(title="Archived claim", description="Archived", category=cat, owner=admin, is_archived=True)
+    
+    api_client.force_login(user=admin)
+    list_url = reverse('resource_list')
+    
+    # 1. By default (or archived=false), we should see only active_res
+    response = api_client.get(list_url)
+    assert response.status_code == 200
+    resources = list(response.context['resources'])
+    assert active_res in resources
+    assert archived_res not in resources
+    assert response.context['show_archived'] is False
+    
+    # 2. With archived=true, we should see only archived_res
+    response = api_client.get(list_url, {'archived': 'true'})
+    assert response.status_code == 200
+    resources = list(response.context['resources'])
+    assert archived_res in resources
+    assert active_res not in resources
+    assert response.context['show_archived'] is True
+
+

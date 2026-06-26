@@ -9,8 +9,10 @@ def resource_list(request):
     if not user.role:
         return redirect('login')
         
+    show_archived = request.GET.get('archived', 'false').lower() == 'true'
+        
     # Queryset filtering based on Role-Based Access Control
-    queryset = Resource.objects.filter(is_archived=False).select_related('category', 'owner')
+    queryset = Resource.objects.filter(is_archived=show_archived).select_related('category', 'owner')
     if user.role.name == 'manager':
         queryset = queryset.filter(department=user.department)
     elif user.role.name == 'user':
@@ -32,7 +34,8 @@ def resource_list(request):
     return render(request, 'resources/list.html', {
         'resources': queryset,
         'categories': categories,
-        'departments': dict(user.DEPARTMENT_CHOICES)
+        'departments': dict(user.DEPARTMENT_CHOICES),
+        'show_archived': show_archived,
     })
 
 @login_required(login_url='login')
