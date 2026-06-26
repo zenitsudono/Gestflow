@@ -22,7 +22,9 @@
                         <th class="border-0 py-3.5 px-3">Department</th>
                         <th class="border-0 py-3.5 px-3">Phone</th>
                         <th class="border-0 py-3.5 px-3">Created</th>
+                        {% if request.user.role.name == 'admin' %}
                         <th class="border-0 py-3.5 px-6 text-end">Actions</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody class="text-sm text-slate-600 divide-y divide-slate-100">
@@ -58,6 +60,7 @@
                         </td>
                         <td class="py-3.5 px-3 text-slate-500">{{ u.phone|default:"-" }}</td>
                         <td class="py-3.5 px-3 text-slate-400">{{ u.created_at|date:"M d, Y" }}</td>
+                        {% if request.user.role.name == 'admin' %}
                         <td class="py-3.5 px-6 text-end">
                             <div class="flex items-center justify-end gap-2">
                                 <!-- Edit Role/Dept Button -->
@@ -82,6 +85,7 @@
                                 {% endif %}
                             </div>
                         </td>
+                        {% endif %}
                     </tr>
                     {% endfor %}
                 </tbody>

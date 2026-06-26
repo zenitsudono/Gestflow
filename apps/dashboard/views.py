@@ -90,13 +90,17 @@ def settings_view(request):
 @login_required(login_url='login')
 def user_management_view(request):
     user = request.user
-    if not user.role or user.role.name != Role.ADMIN:
+    if not user.role or user.role.name not in [Role.ADMIN, Role.MANAGER]:
         raise Http404("You do not have permission to access this page.")
 
     users = CustomUser.objects.all().select_related('role').order_by('-created_at')
     roles = Role.objects.all()
 
     if request.method == 'POST':
+        if user.role.name != Role.ADMIN:
+            messages.error(request, "Seuls les administrateurs peuvent modifier les utilisateurs.")
+            return redirect('user_management')
+            
         action_type = request.POST.get('action_type')
         user_id = request.POST.get('user_id')
         target_user = get_object_or_404(CustomUser, pk=user_id)

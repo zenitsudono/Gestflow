@@ -87,7 +87,7 @@
                 Réclamations
             </a>
 
-            {% if request.user.role.name == 'admin' %}
+            {% if request.user.role.name == 'admin' or request.user.role.name == 'manager' %}
             <a href="{% url 'user_management' %}" 
                class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors no-underline text-white {% if 'user' in request.path %}bg-white/10 text-white{% else %}text-white/70 hover:bg-white/5 hover:text-white{% endif %}">
                 <i class="fa-solid fa-users w-5"></i>
