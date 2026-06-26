@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from .models import Resource, Category
 
 @login_required(login_url='login')
@@ -14,6 +15,18 @@ def resource_list(request):
         queryset = queryset.filter(department=user.department)
     elif user.role.name == 'user':
         queryset = queryset.filter(owner=user)
+        
+    # Apply user-submitted filters
+    search_query = request.GET.get('search', '').strip()
+    category_query = request.GET.get('category', '').strip()
+    status_query = request.GET.get('status', '').strip()
+    
+    if search_query:
+        queryset = queryset.filter(Q(title__icontains=search_query) | Q(description__icontains=search_query))
+    if category_query:
+        queryset = queryset.filter(category_id=category_query)
+    if status_query:
+        queryset = queryset.filter(status=status_query)
         
     categories = Category.objects.all()
     return render(request, 'resources/list.html', {

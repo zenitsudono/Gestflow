@@ -267,3 +267,37 @@ def test_resource_web_views_permissions(api_client, db_roles):
     assert response.status_code == 302
     assert response.url == list_url
 
+
+@pytest.mark.django_db
+def test_resource_web_views_filtering(api_client, db_roles):
+    admin = UserFactory(role=db_roles['admin'], department='it')
+    cat1 = CategoryFactory(name="Billing")
+    cat2 = CategoryFactory(name="Technical")
+    
+    res1 = ResourceFactory(title="Billing issue", description="Failed payment", category=cat1, owner=admin, status="active")
+    res2 = ResourceFactory(title="Network downtime", description="Server down", category=cat2, owner=admin, status="pending")
+    
+    api_client.force_login(user=admin)
+    list_url = reverse('resource_list')
+    
+    # Test search filter
+    response = api_client.get(list_url, {'search': 'Billing'})
+    assert response.status_code == 200
+    resources = list(response.context['resources'])
+    assert res1 in resources
+    assert res2 not in resources
+    
+    # Test category filter
+    response = api_client.get(list_url, {'category': cat1.id})
+    assert response.status_code == 200
+    resources = list(response.context['resources'])
+    assert res1 in resources
+    assert res2 not in resources
+    
+    # Test status filter
+    response = api_client.get(list_url, {'status': 'pending'})
+    assert response.status_code == 200
+    resources = list(response.context['resources'])
+    assert res2 in resources
+    assert res1 not in resources
+
