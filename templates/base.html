@@ -42,6 +42,58 @@
             box-shadow: 0 0 0 0.25rem rgba(31, 78, 121, 0.25);
             border-color: #1F4E79;
         }
+
+        /* Creative animations and transitions */
+        .sidebar-link {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .sidebar-link:hover {
+            transform: translateX(6px);
+            background-color: rgba(255, 255, 255, 0.12) !important;
+            color: #ffffff !important;
+        }
+        
+        .kpi-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 20px -8px rgba(0, 0, 0, 0.15) !important;
+        }
+
+        /* Page Entrance Animation */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Ringing bell notification effect */
+        @keyframes bellRing {
+            0%, 100% { transform: rotate(0); }
+            10% { transform: rotate(15deg); }
+            20% { transform: rotate(-10deg); }
+            30% { transform: rotate(12deg); }
+            40% { transform: rotate(-8deg); }
+            50% { transform: rotate(6deg); }
+            60% { transform: rotate(-4deg); }
+            70% { transform: rotate(2deg); }
+            80% { transform: rotate(-1deg); }
+            90% { transform: rotate(0); }
+        }
+        .bell-ring {
+            animation: bellRing 1.8s ease-in-out infinite;
+            transform-origin: top center;
+            display: inline-block;
+        }
     </style>
 </head>
 <body class="h-full flex overflow-hidden" x-data="{ mobileSidebarOpen: false }">
@@ -76,33 +128,33 @@
         <!-- Sidebar Navigation -->
         <nav class="flex-1 space-y-1 px-4 py-6 overflow-y-auto">
             <a href="{% url 'dashboard' %}" 
-               class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors no-underline text-white {% if request.resolver_match.url_name == 'dashboard' %}bg-white/10 text-white{% else %}text-white/70 hover:bg-white/5 hover:text-white{% endif %}">
+               class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium no-underline text-white {% if request.resolver_match.url_name == 'dashboard' %}bg-white/10 text-white{% else %}text-white/70 hover:bg-white/5 hover:text-white{% endif %}">
                 <i class="fa-solid fa-chart-pie w-5"></i>
                 Tableau de bord
             </a>
 
             <a href="{% url 'resource_list' %}" 
-               class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors no-underline text-white {% if 'resource' in request.path %}bg-white/10 text-white{% else %}text-white/70 hover:bg-white/5 hover:text-white{% endif %}">
+               class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium no-underline text-white {% if 'resource' in request.path %}bg-white/10 text-white{% else %}text-white/70 hover:bg-white/5 hover:text-white{% endif %}">
                 <i class="fa-solid fa-folder-open w-5"></i>
                 Réclamations
             </a>
 
             {% if request.user.role.name == 'admin' or request.user.role.name == 'manager' %}
             <a href="{% url 'user_management' %}" 
-               class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors no-underline text-white {% if 'user' in request.path %}bg-white/10 text-white{% else %}text-white/70 hover:bg-white/5 hover:text-white{% endif %}">
+               class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium no-underline text-white {% if 'user' in request.path %}bg-white/10 text-white{% else %}text-white/70 hover:bg-white/5 hover:text-white{% endif %}">
                 <i class="fa-solid fa-users w-5"></i>
                 Gestion des Utilisateurs
             </a>
             {% endif %}
 
             <a href="{% url 'settings' %}" 
-               class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors no-underline text-white {% if request.resolver_match.url_name == 'settings' %}bg-white/10 text-white{% else %}text-white/70 hover:bg-white/5 hover:text-white{% endif %}">
+               class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium no-underline text-white {% if request.resolver_match.url_name == 'settings' %}bg-white/10 text-white{% else %}text-white/70 hover:bg-white/5 hover:text-white{% endif %}">
                 <i class="fa-solid fa-gears w-5"></i>
                 Paramètres
             </a>
             
             <a href="{% url 'swagger-ui' %}" target="_blank"
-               class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/70 hover:bg-white/5 hover:text-white transition-colors no-underline">
+               class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/70 hover:bg-white/5 hover:text-white no-underline">
                 <i class="fa-solid fa-code w-5"></i>
                 Documentation API
             </a>
@@ -145,7 +197,7 @@
                 <!-- Notification Bell -->
                 <div class="relative">
                     <button class="relative rounded-full p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors" @click="notifMenuOpen = !notifMenuOpen">
-                        <i class="fa-solid fa-bell text-lg"></i>
+                        <i class="fa-solid fa-bell text-lg" :class="unreadCount > 0 ? 'bell-ring' : ''"></i>
                         <span class="absolute top-1 right-1 flex h-2 w-2" x-show="unreadCount > 0">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
@@ -226,7 +278,7 @@
         </header>
 
         <!-- Main Content Panel -->
-        <main class="flex-1 overflow-y-auto bg-slate-50 p-6">
+        <main class="flex-1 overflow-y-auto bg-slate-50 p-6 animate-fade-in-up">
             {% if messages %}
                 <div class="mb-4 space-y-2">
                     {% for message in messages %}

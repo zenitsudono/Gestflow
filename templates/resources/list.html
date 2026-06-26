@@ -71,7 +71,7 @@
                 <tbody class="text-sm text-slate-600 divide-y divide-slate-100">
                     {% if resources %}
                         {% for res in resources %}
-                        <tr class="hover:bg-slate-50/50 transition-colors">
+                        <tr class="hover:bg-slate-50/80 transition-all duration-200 hover:translate-x-1">
                             <td class="py-3.5 px-6 font-semibold text-slate-800">
                                 <a href="{% url 'resource_detail' res.id %}" class="no-underline text-slate-800 hover:text-sky-600 transition-colors">
                                     {{ res.title }}
