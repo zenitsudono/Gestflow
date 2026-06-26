@@ -14,6 +14,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Axios for API requests -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <!-- FontAwesome for Icons -->
@@ -138,13 +140,13 @@
                 </h1>
             </div>
 
-            <div class="flex items-center gap-4" x-data="{ userMenuOpen: false, notifMenuOpen: false }">
+            <div class="flex items-center gap-4" x-data="notificationsManager()">
                 
                 <!-- Notification Bell -->
                 <div class="relative">
                     <button class="relative rounded-full p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors" @click="notifMenuOpen = !notifMenuOpen">
                         <i class="fa-solid fa-bell text-lg"></i>
-                        <span class="absolute top-1 right-1 flex h-2 w-2">
+                        <span class="absolute top-1 right-1 flex h-2 w-2" x-show="unreadCount > 0">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                         </span>
@@ -163,16 +165,24 @@
                          style="display: none;">
                         <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
                             <span class="font-semibold text-sm text-slate-800">Notifications</span>
-                            <a href="#" class="text-xs text-sky-600 font-medium hover:underline">Tout marquer comme lu</a>
+                            <button @click="markAllAsRead()" x-show="unreadCount > 0" class="text-xs text-sky-600 font-medium hover:underline bg-transparent border-none p-0 shadow-none">Tout marquer comme lu</button>
                         </div>
                         <div class="space-y-2 py-1 max-h-60 overflow-y-auto">
                             <!-- In-app notifications feed -->
-                            <div class="flex gap-3 p-2 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer">
-                                <span class="h-2 w-2 rounded-full bg-sky-500 mt-2 flex-shrink-0"></span>
-                                <div class="flex-1 text-xs text-slate-600">
-                                    <p class="font-medium text-slate-800">Bienvenue sur GestiFlow !</p>
-                                    <p class="text-slate-400 text-[10px] mt-0.5">À l'instant</p>
+                            <template x-for="notif in notifications" :key="notif.id">
+                                <div class="flex gap-3 p-2 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+                                     @click="markAsRead(notif)">
+                                    <span class="h-2 w-2 rounded-full mt-2 flex-shrink-0"
+                                          :class="notif.is_read ? 'bg-slate-200' : 'bg-sky-500'"></span>
+                                    <div class="flex-1 text-xs text-slate-600">
+                                        <p class="font-medium text-slate-800" :class="notif.is_read ? 'text-slate-400 font-normal' : 'text-slate-800 font-semibold'" x-text="notif.title"></p>
+                                        <p class="text-slate-500 mt-0.5" x-text="notif.message"></p>
+                                        <p class="text-slate-400 text-[10px] mt-0.5" x-text="timeAgo(notif.created_at)"></p>
+                                    </div>
                                 </div>
+                            </template>
+                            <div x-show="notifications.length === 0" class="text-center py-4 text-xs text-slate-400">
+                                Aucune notification
                             </div>
                         </div>
                     </div>
@@ -234,5 +244,68 @@
 
     <!-- Bootstrap 5 JavaScript Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        function notificationsManager() {
+            return {
+                userMenuOpen: false,
+                notifMenuOpen: false,
+                notifications: [],
+                unreadCount: 0,
+        
+                async init() {
+                    // Set CSRF token for Axios calls
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+                    if (csrfToken) {
+                        axios.defaults.headers.common['X-CSRFToken'] = csrfToken;
+                    }
+                    
+                    await this.fetchNotifications();
+                    // Poll for new notifications every 20 seconds
+                    setInterval(() => this.fetchNotifications(), 20000);
+                },
+        
+                async fetchNotifications() {
+                    try {
+                        const response = await axios.get('/api/v1/notifications/');
+                        this.notifications = response.data.results || response.data;
+                        this.unreadCount = this.notifications.filter(n => !n.is_read).length;
+                    } catch (error) {
+                        console.error("Error fetching notifications:", error);
+                    }
+                },
+        
+                async markAsRead(notification) {
+                    if (notification.is_read) return;
+                    try {
+                        await axios.post(`/api/v1/notifications/${notification.id}/read/`);
+                        notification.is_read = true;
+                        this.unreadCount = Math.max(0, this.unreadCount - 1);
+                    } catch (error) {
+                        console.error("Error marking notification as read:", error);
+                    }
+                },
+        
+                async markAllAsRead() {
+                    const unread = this.notifications.filter(n => !n.is_read);
+                    for (let n of unread) {
+                        await this.markAsRead(n);
+                    }
+                },
+        
+                timeAgo(timestamp) {
+                    const date = new Date(timestamp);
+                    const now = new Date();
+                    const diffMs = now - date;
+                    const diffMins = Math.floor(diffMs / 60000);
+                    if (diffMins < 1) return "À l'instant";
+                    if (diffMins < 60) return `Il y a ${diffMins} min`;
+                    const diffHours = Math.floor(diffMins / 60);
+                    if (diffHours < 24) return `Il y a ${diffHours} h`;
+                    return date.toLocaleDateString();
+                }
+            }
+        }
+    </script>
 </body>
 </html>
