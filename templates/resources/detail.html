@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block title %}Détail de la Réclamation - GestiFlow{% endblock %}
+{% block page_title %}Détails de la Réclamation{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="resourceDetail('{{ resource.id }}')">
+    
+    <!-- Resource Header Card -->
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-3">
+                <h2 class="text-xl font-bold text-slate-800">{{ resource.title }}</h2>
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold
+                    {% if resource.status == 'active' %}bg-green-50 text-green-700
+                    {% elif resource.status == 'inactive' %}bg-slate-50 text-slate-700
+                    {% else %}bg-amber-50 text-amber-700{% endif %}">
+                    {{ resource.get_status_display }}
+                </span>
+            </div>
+            <p class="text-sm text-slate-400 mt-1">ID Réclamation: <span class="font-mono text-xs">{{ resource.id }}</span></p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{% url 'resource_list' %}" class="btn btn-light rounded-xl px-4 py-2 border-slate-200 text-sm font-semibold shadow-sm">
+                <i class="fa-solid fa-arrow-left mr-1.5"></i> Retour à la liste
+            </a>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="border-b border-slate-100 bg-slate-50/50 px-6">
+            <nav class="flex gap-6" aria-label="Tabs">
+                <button @click="activeTab = 'info'"
+                        :class="activeTab === 'info' ? 'border-[#1F4E79] text-[#1F4E79]' : 'border-transparent text-slate-400 hover:text-slate-600'"
+                        class="border-b-2 py-4 px-1 text-sm font-semibold transition-colors no-underline">
+                    <i class="fa-solid fa-circle-info mr-1.5"></i> Informations
+                </button>
+                
+                <button @click="activeTab = 'documents'"
+                        :class="activeTab === 'documents' ? 'border-[#1F4E79] text-[#1F4E79]' : 'border-transparent text-slate-400 hover:text-slate-600'"
+                        class="border-b-2 py-4 px-1 text-sm font-semibold transition-colors no-underline">
+                    <i class="fa-solid fa-file-pdf mr-1.5"></i> Documents
+                </button>
+
+                <button @click="loadHistory()"
+                        :class="activeTab === 'history' ? 'border-[#1F4E79] text-[#1F4E79]' : 'border-transparent text-slate-400 hover:text-slate-600'"
+                        class="border-b-2 py-4 px-1 text-sm font-semibold transition-colors no-underline">
+                    <i class="fa-solid fa-clock-rotate-left mr-1.5"></i> Historique
+                </button>
+
+                <button @click="activeTab = 'comments'"
+                        :class="activeTab === 'comments' ? 'border-[#1F4E79] text-[#1F4E79]' : 'border-transparent text-slate-400 hover:text-slate-600'"
+                        class="border-b-2 py-4 px-1 text-sm font-semibold transition-colors no-underline">
+                    <i class="fa-solid fa-comments mr-1.5"></i> Commentaires
+                </button>
+            </nav>
+        </div>
+
+        <div class="p-6">
+            <!-- TAB: Info -->
+            <div x-show="activeTab === 'info'" class="space-y-6">
+                <div>
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Description</h4>
+                    <p class="text-sm text-slate-600 leading-relaxed">{{ resource.description }}</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-50">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Catégorie</h4>
+                        <p class="text-sm font-semibold text-slate-800">{{ resource.category.name }}</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Agent Responsable</h4>
+                        <p class="text-sm font-semibold text-slate-800">{{ resource.owner.get_full_name }} ({{ resource.owner.email }})</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Département</h4>
+                        <p class="text-sm font-semibold text-slate-800 uppercase">{{ resource.department|default:"-" }}</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50 text-xs text-slate-400">
+                    <p>Créé le : <span class="font-semibold text-slate-500">{{ resource.created_at|date:"d F Y H:i" }}</span></p>
+                    <p>Dernière modification : <span class="font-semibold text-slate-500">{{ resource.updated_at|date:"d F Y H:i" }}</span></p>
+                </div>
+            </div>
+
+            <!-- TAB: Documents -->
+            <div x-show="activeTab === 'documents'" style="display: none;" class="space-y-6">
+                <div class="flex items-center justify-between border-b border-slate-50 pb-4">
+                    <h4 class="text-sm font-bold text-slate-800">Documents Annexes</h4>
+                    <button class="btn btn-sm bg-[#1F4E79] hover-bg-primary-navy-dark text-white rounded-lg text-xs font-semibold px-3 py-2 flex items-center gap-1.5"
+                            @click="triggerDocUpload()">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Ajouter un Document
+                    </button>
+                </div>
+
+                <div class="space-y-3" id="docList">
+                    <p class="text-sm text-slate-400 text-center py-6">Aucun document n'est rattaché à cette réclamation pour le moment.</p>
+                </div>
+            </div>
+
+            <!-- TAB: History (Audit Log) -->
+            <div x-show="activeTab === 'history'" style="display: none;" class="space-y-4">
+                <template x-if="historyLoading">
+                    <div class="text-center py-6 text-slate-400">
+                        <i class="fa-solid fa-spinner animate-spin text-xl mr-2"></i> Chargement de l'historique...
+                    </div>
+                </template>
+
+                <template x-if="!historyLoading && historyData.length === 0">
+                    <p class="text-sm text-slate-400 text-center py-6">Aucun historique enregistré pour cette réclamation.</p>
+                </template>
+
+                <div class="relative pl-6 border-l-2 border-slate-100 ml-4 space-y-6" x-show="!historyLoading && historyData.length > 0">
+                    <template x-for="log in historyData" :key="log.id">
+                        <div class="relative">
+                            <span class="absolute -left-[31px] top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-white border-2 border-slate-300">
+                                <span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
+                            </span>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold text-[#1F4E79]" x-text="log.action"></span>
+                                    <span class="text-xs text-slate-400" x-text="formatDate(log.timestamp)"></span>
+                                </div>
+                                <p class="text-sm text-slate-700 mt-1">
+                                    Effectué par <span class="font-semibold text-slate-800" x-text="log.user"></span>
+                                    depuis l'IP <span class="font-mono text-xs text-slate-500" x-text="log.ip_address || 'inconnue'"></span>
+                                </p>
+                                <div class="mt-2 bg-slate-50 p-2.5 rounded-lg text-xs font-mono text-slate-600 border border-slate-100/50" x-show="Object.keys(log.changes).length > 0">
+                                    <template x-for="[key, val] in Object.entries(log.changes)" :key="key">
+                                        <div class="py-0.5">
+                                            <span class="font-semibold text-slate-700" x-text="key"></span>: 
+                                            <span class="text-red-500" x-text="val[0] !== null ? val[0] : 'null'"></span> ➔ 
+                                            <span class="text-green-600" x-text="val[1] !== null ? val[1] : 'null'"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- TAB: Comments -->
+            <div x-show="activeTab === 'comments'" style="display: none;" class="space-y-4">
+                <div class="flex gap-4">
+                    <textarea class="form-control rounded-xl py-2 px-3 border border-slate-200 focus-ring-navy focus:outline-none text-sm w-full"
+                              rows="3" placeholder="Ajouter un commentaire ou une note de traitement..."></textarea>
+                </div>
+                <div class="flex justify-end">
+                    <button class="btn btn-sm bg-[#1F4E79] hover-bg-primary-navy-dark text-white rounded-lg text-xs font-semibold px-4 py-2">
+                        Publier le commentaire
+                    </button>
+                </div>
+                
+                <div class="pt-4 border-t border-slate-50 space-y-4">
+                    <p class="text-sm text-slate-400 text-center py-6">Aucun commentaire posté pour le moment.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+    function resourceDetail(resourceId) {
+        return {
+            activeTab: 'info',
+            resourceId: resourceId,
+            historyData: [],
+            historyLoading: false,
+
+            init() {
+                axios.defaults.headers.common['X-CSRFToken'] = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+            },
+
+            async loadHistory() {
+                this.activeTab = 'history';
+                this.historyLoading = true;
+                try {
+                    const response = await axios.get(`/api/v1/resources/${this.resourceId}/history/`);
+                    this.historyData = response.data;
+                } catch (error) {
+                    console.error("Error loading history:", error);
+                } finally {
+                    this.historyLoading = false;
+                }
+            },
+
+            formatDate(isoString) {
+                const date = new Date(isoString);
+                return date.toLocaleString();
+            },
+
+            triggerDocUpload() {
+                alert("Les téléchargements de documents sont gérés via l'API Document.");
+            }
+        };
+    }
+</script>
+{% endblock %}

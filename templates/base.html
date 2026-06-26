@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}GestiFlow{% endblock %}</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .text-primary-navy {
+            color: #1F4E79;
+        }
+        .bg-primary-navy {
+            background-color: #1F4E79;
+        }
+        .hover-bg-primary-navy-dark:hover {
+            background-color: #153857;
+        }
+        .border-primary-navy {
+            border-color: #1F4E79;
+        }
+        .focus-ring-navy:focus {
+            box-shadow: 0 0 0 0.25rem rgba(31, 78, 121, 0.25);
+            border-color: #1F4E79;
+        }
+    </style>
+</head>
+<body class="h-full flex overflow-hidden" x-data="{ mobileSidebarOpen: false }">
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden" 
+         x-show="mobileSidebarOpen" 
+         x-transition:enter="transition-opacity ease-linear duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity ease-linear duration-300"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="mobileSidebarOpen = false"
+         style="display: none;"></div>
+
+    <!-- Sidebar (Desktop & Mobile) -->
+    <aside class="fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-[#1F4E79] text-white transition-transform duration-300 ease-in-out transform lg:translate-x-0 lg:static lg:z-0 lg:flex-shrink-0"
+           :class="mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'">
+        
+        <!-- Sidebar Brand -->
+        <div class="flex h-16 items-center justify-between px-6 bg-slate-900/10 border-b border-white/10">
+            <a href="{% url 'dashboard' %}" class="flex items-center gap-3 no-underline text-white">
+                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-[#1F4E79] font-bold text-xl">G</span>
+                <span class="font-bold text-lg tracking-wider">GestiFlow</span>
+            </a>
+            <button class="lg:hidden text-white/80 hover:text-white" @click="mobileSidebarOpen = false">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Sidebar Navigation -->
+        <nav class="flex-1 space-y-1 px-4 py-6 overflow-y-auto">
+            <a href="{% url 'dashboard' %}" 
+               class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors no-underline text-white {% if request.resolver_match.url_name == 'dashboard' %}bg-white/10 text-white{% else %}text-white/70 hover:bg-white/5 hover:text-white{% endif %}">
+                <i class="fa-solid fa-chart-pie w-5"></i>
+                Tableau de bord
+            </a>
+
+            <a href="{% url 'resource_list' %}" 
+               class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors no-underline text-white {% if 'resource' in request.path %}bg-white/10 text-white{% else %}text-white/70 hover:bg-white/5 hover:text-white{% endif %}">
+                <i class="fa-solid fa-folder-open w-5"></i>
+                Réclamations
+            </a>
+
+            {% if request.user.role.name == 'admin' %}
+            <a href="{% url 'user_management' %}" 
+               class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors no-underline text-white {% if 'user' in request.path %}bg-white/10 text-white{% else %}text-white/70 hover:bg-white/5 hover:text-white{% endif %}">
+                <i class="fa-solid fa-users w-5"></i>
+                Gestion des Utilisateurs
+            </a>
+            {% endif %}
+
+            <a href="{% url 'settings' %}" 
+               class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors no-underline text-white {% if request.resolver_match.url_name == 'settings' %}bg-white/10 text-white{% else %}text-white/70 hover:bg-white/5 hover:text-white{% endif %}">
+                <i class="fa-solid fa-gears w-5"></i>
+                Paramètres
+            </a>
+            
+            <a href="{% url 'swagger-ui' %}" target="_blank"
+               class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/70 hover:bg-white/5 hover:text-white transition-colors no-underline">
+                <i class="fa-solid fa-code w-5"></i>
+                Documentation API
+            </a>
+        </nav>
+
+        <!-- Sidebar User Footer -->
+        <div class="p-4 bg-slate-900/10 border-t border-white/10">
+            <div class="flex items-center gap-3">
+                {% if request.user.avatar %}
+                    <img class="h-10 w-10 rounded-full object-cover border border-white/20" src="{{ request.user.avatar.url }}" alt="Avatar">
+                {% else %}
+                    <div class="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-white uppercase border border-white/10">
+                        {{ request.user.email|slice:":2" }}
+                    </div>
+                {% endif %}
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold truncate">{{ request.user.get_full_name }}</p>
+                    <p class="text-xs text-white/60 truncate uppercase font-bold tracking-wider">{{ request.user.role.get_name_display }}</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Panel -->
+    <div class="flex flex-1 flex-col overflow-hidden">
+        
+        <!-- Header -->
+        <header class="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
+            <div class="flex items-center gap-4">
+                <button class="lg:hidden text-slate-500 hover:text-slate-700" @click="mobileSidebarOpen = true">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <h1 class="text-lg font-semibold text-slate-800">
+                    {% block page_title %}Vue d'ensemble{% endblock %}
+                </h1>
+            </div>
+
+            <div class="flex items-center gap-4" x-data="{ userMenuOpen: false, notifMenuOpen: false }">
+                
+                <!-- Notification Bell -->
+                <div class="relative">
+                    <button class="relative rounded-full p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors" @click="notifMenuOpen = !notifMenuOpen">
+                        <i class="fa-solid fa-bell text-lg"></i>
+                        <span class="absolute top-1 right-1 flex h-2 w-2">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                        </span>
+                    </button>
+                    
+                    <!-- Notification Dropdown -->
+                    <div class="absolute right-0 mt-2 w-80 origin-top-right rounded-xl bg-white p-3 shadow-xl border border-slate-100 focus:outline-none z-50"
+                         x-show="notifMenuOpen"
+                         @click.away="notifMenuOpen = false"
+                         x-transition:enter="transition ease-out duration-100"
+                         x-transition:enter-start="transform opacity-0 scale-95"
+                         x-transition:enter-end="transform opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-75"
+                         x-transition:leave-start="transform opacity-100 scale-100"
+                         x-transition:leave-end="transform opacity-0 scale-95"
+                         style="display: none;">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
+                            <span class="font-semibold text-sm text-slate-800">Notifications</span>
+                            <a href="#" class="text-xs text-sky-600 font-medium hover:underline">Tout marquer comme lu</a>
+                        </div>
+                        <div class="space-y-2 py-1 max-h-60 overflow-y-auto">
+                            <!-- In-app notifications feed -->
+                            <div class="flex gap-3 p-2 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer">
+                                <span class="h-2 w-2 rounded-full bg-sky-500 mt-2 flex-shrink-0"></span>
+                                <div class="flex-1 text-xs text-slate-600">
+                                    <p class="font-medium text-slate-800">Bienvenue sur GestiFlow !</p>
+                                    <p class="text-slate-400 text-[10px] mt-0.5">À l'instant</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Dropdown Menu -->
+                <div class="relative">
+                    <button class="flex items-center gap-2 rounded-full border border-slate-200 p-1 pr-3 hover:bg-slate-50 transition-colors" @click="userMenuOpen = !userMenuOpen">
+                        {% if request.user.avatar %}
+                            <img class="h-8 w-8 rounded-full object-cover" src="{{ request.user.avatar.url }}" alt="Avatar">
+                        {% else %}
+                            <div class="h-8 w-8 rounded-full bg-[#1F4E79]/10 text-[#1F4E79] flex items-center justify-center font-bold text-sm uppercase">
+                                {{ request.user.email|slice:":2" }}
+                            </div>
+                        {% endif %}
+                        <span class="text-sm font-medium text-slate-700 max-w-[120px] truncate hidden sm:inline">{{ request.user.get_full_name }}</span>
+                        <i class="fa-solid fa-chevron-down text-slate-400 text-xs hidden sm:inline"></i>
+                    </button>
+
+                    <!-- Dropdown Panel -->
+                    <div class="absolute right-0 mt-2 w-48 origin-top-right rounded-xl bg-white p-1.5 shadow-xl border border-slate-100 focus:outline-none z-50"
+                         x-show="userMenuOpen"
+                         @click.away="userMenuOpen = false"
+                         x-transition:enter="transition ease-out duration-100"
+                         x-transition:enter-start="transform opacity-0 scale-95"
+                         x-transition:enter-end="transform opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-75"
+                         x-transition:leave-start="transform opacity-100 scale-100"
+                         x-transition:leave-end="transform opacity-0 scale-95"
+                         style="display: none;">
+                        <a href="{% url 'settings' %}" class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg no-underline transition-colors">
+                            <i class="fa-solid fa-circle-user text-slate-400 w-4"></i> Mon Profil
+                        </a>
+                        <div class="border-t border-slate-100 my-1"></div>
+                        <a href="{% url 'logout' %}" class="flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg no-underline transition-colors">
+                            <i class="fa-solid fa-arrow-right-from-bracket w-4"></i> Se Déconnecter
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Panel -->
+        <main class="flex-1 overflow-y-auto bg-slate-50 p-6">
+            {% if messages %}
+                <div class="mb-4 space-y-2">
+                    {% for message in messages %}
+                        <div class="alert {% if message.tags == 'success' %}alert-success bg-green-50 text-green-700 border-none{% else %}alert-danger bg-red-50 text-red-700 border-none{% endif %} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close shadow-none" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Bootstrap 5 JavaScript Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

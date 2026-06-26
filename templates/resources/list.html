@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+
+{% block title %}Réclamations - GestiFlow{% endblock %}
+{% block page_title %}Réclamations{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="resourcesManager()">
+    
+    <!-- Top actions bar -->
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <!-- Search & Filter Controls -->
+        <form method="GET" action="{% url 'resource_list' %}" class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            <input type="text" name="search" placeholder="Rechercher une réclamation..." value="{{ request.GET.search|default:'' }}"
+                   class="form-control rounded-xl py-2 px-3.5 text-sm border-slate-200 focus-ring-navy focus:outline-none w-full sm:w-60 shadow-sm">
+            
+            <select name="category" class="form-select rounded-xl py-2 px-3.5 text-sm border-slate-200 focus-ring-navy focus:outline-none w-full sm:w-44 shadow-sm">
+                <option value="">Toutes les catégories</option>
+                {% for cat in categories %}
+                <option value="{{ cat.id }}" {% if request.GET.category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="status" class="form-select rounded-xl py-2 px-3.5 text-sm border-slate-200 focus-ring-navy focus:outline-none w-full sm:w-36 shadow-sm">
+                <option value="">Tous les statuts</option>
+                <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>En cours</option>
+                <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Résolue</option>
+                <option value="pending" {% if request.GET.status == 'pending' %}selected{% endif %}>En attente</option>
+            </select>
+
+            <button type="submit" class="btn btn-light rounded-xl px-4 py-2 border-slate-200 text-sm font-semibold shadow-sm">
+                <i class="fa-solid fa-filter mr-1.5 text-slate-400"></i> Filtrer
+            </button>
+        </form>
+
+        <!-- Create Button -->
+        <button class="btn bg-primary-navy hover-bg-primary-navy-dark text-white rounded-xl px-4 py-2 text-sm font-semibold shadow-sm w-full sm:w-auto flex items-center justify-center gap-2"
+                @click="openCreateDrawer()">
+            <i class="fa-solid fa-plus text-xs"></i> Nouvelle Réclamation
+        </button>
+    </div>
+
+    <!-- Data Table Card -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="table align-middle mb-0">
+                <thead class="table-light text-slate-500 text-xs uppercase">
+                    <tr>
+                        <th class="border-0 py-3.5 px-6">Objet de la réclamation</th>
+                        <th class="border-0 py-3.5 px-3">Catégorie</th>
+                        <th class="border-0 py-3.5 px-3">Statut</th>
+                        <th class="border-0 py-3.5 px-3">Agent Responsable</th>
+                        <th class="border-0 py-3.5 px-3">Département</th>
+                        <th class="border-0 py-3.5 px-6 text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm text-slate-600 divide-y divide-slate-100">
+                    {% if resources %}
+                        {% for res in resources %}
+                        <tr class="hover:bg-slate-50/50 transition-colors">
+                            <td class="py-3.5 px-6 font-semibold text-slate-800">
+                                <a href="{% url 'resource_detail' res.id %}" class="no-underline text-slate-800 hover:text-sky-600 transition-colors">
+                                    {{ res.title }}
+                                </a>
+                            </td>
+                            <td class="py-3.5 px-3">
+                                <span class="px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 text-xs font-semibold">
+                                    {{ res.category.name }}
+                                </span>
+                            </td>
+                            <td class="py-3.5 px-3">
+                                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold
+                                    {% if res.status == 'active' %}bg-green-50 text-green-700
+                                    {% elif res.status == 'inactive' %}bg-slate-50 text-slate-700
+                                    {% else %}bg-amber-50 text-amber-700{% endif %}">
+                                    {{ res.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="py-3.5 px-3">{{ res.owner.get_full_name }}</td>
+                            <td class="py-3.5 px-3 uppercase font-semibold text-xs text-slate-400">
+                                {% for code, label in departments.items %}
+                                    {% if res.department == code %}{{ label }}{% endif %}
+                                {% endfor %}
+                            </td>
+                            <td class="py-3.5 px-6 text-end">
+                                <div class="flex items-center justify-end gap-2">
+                                    <a href="{% url 'resource_detail' res.id %}" class="btn btn-sm btn-light border-slate-200 text-slate-600 rounded-lg shadow-sm" title="Voir les détails">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </a>
+                                    <!-- Edit Trigger -->
+                                    <button class="btn btn-sm btn-light border-slate-200 text-slate-600 rounded-lg shadow-sm" title="Modifier rapidement"
+                                            @click="openEditDrawer('{{ res.id }}', '{{ res.title|escapejs }}', '{{ res.description|escapejs }}', '{{ res.category.id }}', '{{ res.status }}')">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </button>
+                                    
+                                    <!-- Soft Delete / Archive Form -->
+                                    <form method="POST" action="/api/v1/resources/{{ res.id }}/archive/" class="inline-block"
+                                          @submit.prevent="archiveResource($event)">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-light border-slate-200 text-red-600 hover:bg-red-50 rounded-lg shadow-sm" title="Archiver la réclamation">
+                                            <i class="fa-solid fa-box-archive"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-8 text-slate-400">Aucune réclamation trouvée correspondant à vos critères ou à votre département.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Offcanvas Edit/Create Drawer -->
+    <div class="offcanvas offcanvas-end rounded-l-2xl border-none shadow-2xl" tabindex="-1" id="resourceDrawer" aria-labelledby="resourceDrawerLabel">
+        <div class="offcanvas-header bg-slate-50 border-b border-slate-100 p-4">
+            <h5 class="offcanvas-title font-bold text-slate-800" id="resourceDrawerLabel" x-text="drawerMode === 'create' ? 'Nouvelle Réclamation' : 'Modifier la Réclamation'"></h5>
+            <button type="button" class="btn-close shadow-none" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-6">
+            <form :action="drawerMode === 'create' ? '/api/v1/resources/' : '/api/v1/resources/' + editingId + '/'" 
+                  method="POST" 
+                  @submit.prevent="submitForm($event)"
+                  class="space-y-5">
+                {% csrf_token %}
+                
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Objet</label>
+                    <input type="text" name="title" x-model="formData.title" required
+                           class="form-control rounded-xl py-2 px-3 border border-slate-200 focus-ring-navy focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Description</label>
+                    <textarea name="description" x-model="formData.description" rows="4" required
+                              class="form-control rounded-xl py-2 px-3 border border-slate-200 focus-ring-navy focus:outline-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Catégorie</label>
+                    <select name="category" x-model="formData.category" required
+                            class="form-select rounded-xl py-2 px-3 border border-slate-200 focus-ring-navy focus:outline-none">
+                        <option value="">Sélectionnez une catégorie</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}">{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Statut</label>
+                    <select name="status" x-model="formData.status" required
+                            class="form-select rounded-xl py-2 px-3 border border-slate-200 focus-ring-navy focus:outline-none">
+                        <option value="active">En cours</option>
+                        <option value="inactive">Résolue</option>
+                        <option value="pending">En attente</option>
+                    </select>
+                </div>
+
+                <div class="pt-4 flex items-center gap-3">
+                    <button type="button" class="btn btn-light rounded-xl w-1/2 py-2.5 font-semibold text-sm border-slate-200 text-slate-700" data-bs-dismiss="offcanvas">Annuler</button>
+                    <button type="submit" class="btn bg-primary-navy hover-bg-primary-navy-dark text-white rounded-xl w-1/2 py-2.5 font-semibold text-sm shadow-md"
+                            x-text="drawerMode === 'create' ? 'Créer' : 'Enregistrer'"></button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Alpine + Axios integration -->
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+    function resourcesManager() {
+        return {
+            drawerMode: 'create',
+            editingId: null,
+            formData: {
+                title: '',
+                description: '',
+                category: '',
+                status: 'active'
+            },
+            bootstrapDrawer: null,
+
+            init() {
+                this.bootstrapDrawer = new bootstrap.Offcanvas(document.getElementById('resourceDrawer'));
+                axios.defaults.headers.common['X-CSRFToken'] = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            },
+
+            openCreateDrawer() {
+                this.drawerMode = 'create';
+                this.editingId = null;
+                this.formData = {
+                    title: '',
+                    description: '',
+                    category: '',
+                    status: 'active'
+                };
+                this.bootstrapDrawer.show();
+            },
+
+            openEditDrawer(id, title, desc, catId, status) {
+                this.drawerMode = 'edit';
+                this.editingId = id;
+                this.formData = {
+                    title: title,
+                    description: desc,
+                    category: catId,
+                    status: status
+                };
+                this.bootstrapDrawer.show();
+            },
+
+            async submitForm(event) {
+                const url = event.target.action;
+                const method = this.drawerMode === 'create' ? 'post' : 'put';
+                
+                try {
+                    await axios({
+                        method: method,
+                        url: url,
+                        data: this.formData
+                    });
+                    this.bootstrapDrawer.hide();
+                    window.location.reload();
+                } catch (error) {
+                    console.error("Error saving resource:", error);
+                    alert("Erreur lors de l'enregistrement de la réclamation: " + (error.response?.data?.detail || "vérifiez les données saisies"));
+                }
+            },
+
+            async archiveResource(event) {
+                if (!confirm("Êtes-vous sûr de vouloir archiver cette réclamation ?")) return;
+                
+                const url = event.target.action;
+                try {
+                    await axios.post(url);
+                    window.location.reload();
+                } catch (error) {
+                    console.error("Error archiving resource:", error);
+                    alert("Erreur lors de l'archivage de la réclamation.");
+                }
+            }
+        };
+    }
+</script>
+{% endblock %}
